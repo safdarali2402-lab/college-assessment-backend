@@ -15,8 +15,6 @@ public class TeacherService {
         this.repo = repo;
     }
 
-    // ➤ Add new Teacher (Pending by default)
-    // ➤ Add new Teacher (Pending by default)
     public Teacher addTeacher(Teacher t) {
         if (repo.existsByEmail(t.getEmail())) {
             throw new RuntimeException("Teacher already exists!");
@@ -25,26 +23,20 @@ public class TeacherService {
         t.setActive(true);
         t.setApproved(false);
         t.setStatus("PENDING");
-
-        t.setRole("TEACHER"); // 🔥 Correct Role Format
-
-        t.setPassword("Teacher@123"); // Default password
+        t.setRole("TEACHER");
+        t.setPassword("Teacher@123");
 
         return repo.save(t);
     }
 
-
-    // ➤ Pending Teachers of particular College
     public List<Teacher> getPendingTeachers(String collegeId) {
         return repo.findByCollegeIdAndApprovedFalse(collegeId);
     }
 
-    // ➤ Approved Teachers list
     public List<Teacher> getApprovedTeachers(String collegeId) {
         return repo.findByCollegeIdAndApprovedTrue(collegeId);
     }
 
-    // ➤ Approve Teacher
     public Teacher approveTeacher(String id) {
         Teacher t = repo.findById(id)
                 .orElseThrow(() -> new RuntimeException("Teacher not found"));
@@ -56,7 +48,6 @@ public class TeacherService {
         return repo.save(t);
     }
 
-    // ➤ Reject Teacher
     public Teacher rejectTeacher(String id) {
         Teacher t = repo.findById(id)
                 .orElseThrow(() -> new RuntimeException("Teacher not found"));
@@ -68,7 +59,6 @@ public class TeacherService {
         return repo.save(t);
     }
 
-    // ➤ Delete Teacher
     public void deleteTeacher(String id) {
         repo.deleteById(id);
     }

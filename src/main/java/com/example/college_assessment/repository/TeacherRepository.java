@@ -10,16 +10,18 @@ import java.util.Optional;
 @Repository
 public interface TeacherRepository extends MongoRepository<Teacher, String> {
 
-    boolean existsByEmail(String email);
-
     Optional<Teacher> findByEmail(String email);
 
-    // 🔹 College-wise Approved Teacher List
-    List<Teacher> findByCollegeIdAndApprovedTrue(String collegeId);
+    boolean existsByEmail(String email);
 
-    // 🔹 College-wise Pending Teachers List
+    // ✅ College-wise
     List<Teacher> findByCollegeIdAndApprovedFalse(String collegeId);
 
-    // 🔹 Teacher Department Students ke liye (future use)
-    List<Teacher> findByDepartmentAndApprovedTrue(String department);
+    List<Teacher> findByCollegeIdAndApprovedTrue(String collegeId);
+
+    // ✅ ⭐ REQUIRED FOR BRANCH WISE LOGIC ⭐
+    List<Teacher> findByDepartmentAndCollegeIdAndApprovedTrue(
+            String department,
+            String collegeId
+    );
 }

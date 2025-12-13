@@ -7,6 +7,7 @@ import lombok.*;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.*;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Optional;
@@ -22,13 +23,15 @@ public class AuthController {
     private final TeacherRepository teacherRepo;
     private final StudentRepository studentRepo;
     private final CollegeRepository collegeRepo;
+    private final PasswordEncoder passwordEncoder;
 
     public AuthController(AuthenticationManager authManager,
                           JwtUtil jwtUtil,
                           UserRepository userRepo,
                           TeacherRepository teacherRepo,
                           StudentRepository studentRepo,
-                          CollegeRepository collegeRepo) {
+                          CollegeRepository collegeRepo,
+                          PasswordEncoder passwordEncoder) {
 
         this.authManager = authManager;
         this.jwtUtil = jwtUtil;
@@ -36,8 +39,12 @@ public class AuthController {
         this.teacherRepo = teacherRepo;
         this.studentRepo = studentRepo;
         this.collegeRepo = collegeRepo;
+        this.passwordEncoder = passwordEncoder;
     }
 
+    /* =====================================================
+       🔐 LOGIN API (COLLEGE / TEACHER / STUDENT / ADMIN)
+       ===================================================== */
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody AuthRequest req) {
 
@@ -55,8 +62,8 @@ public class AuthController {
         String role = null;
         String collegeId = null;
         String collegeName = null;
-        String studentId = null;    // ⭐ ADD
-        String teacherId = null;    // ⭐ OPTIONAL
+        String studentId = null;
+        String teacherId = null;
 
         // 1️⃣ SUPER_ADMIN / COLLEGE_ADMIN
         Optional<User> uOpt = userRepo.findByUsername(req.getUsername());
@@ -83,21 +90,22 @@ public class AuthController {
             }
         }
 
-        // 3️⃣ STUDENT LOGIN (FIXED FULLY)
+        // 3️⃣ STUDENT LOGIN
         if (role == null) {
             Optional<Student> sOpt = studentRepo.findByEmail(req.getUsername());
             if (sOpt.isPresent()) {
                 Student s = sOpt.get();
                 role = "ROLE_STUDENT";
-                studentId = s.getId();  // ⭐ MUST SEND THIS
+                studentId = s.getId();
                 collegeId = s.getCollegeId();
                 collegeName = s.getCollegeName();
             }
         }
 
-        if (role == null) return ResponseEntity.status(403).body("User not found!");
+        if (role == null) {
+            return ResponseEntity.status(403).body("User not found!");
+        }
 
-        // JWT Token create
         String token = jwtUtil.generateToken(req.getUsername(), role, collegeId);
 
         AuthResponse resp = AuthResponse.builder()
@@ -106,12 +114,15 @@ public class AuthController {
                 .role(role)
                 .collegeId(collegeId)
                 .collegeName(collegeName)
-                .studentId(studentId) // ⭐ RETURN STUDENT ID
-                .teacherId(teacherId) // OPTIONAL
+                .studentId(studentId)
+                .teacherId(teacherId)
                 .build();
 
         return ResponseEntity.ok(resp);
     }
+
+
+    /* ===================== DTOs ===================== */
 
     @Data
     public static class AuthRequest {
@@ -127,7 +138,7 @@ public class AuthController {
         private String role;
         private String collegeId;
         private String collegeName;
-        private String studentId;  // ⭐ ADD
-        private String teacherId;  // OPTIONAL
+        private String studentId;
+        private String teacherId;
     }
 }

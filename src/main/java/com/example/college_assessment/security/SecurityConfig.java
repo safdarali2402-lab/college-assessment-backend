@@ -42,7 +42,11 @@ public class SecurityConfig {
 
                         // PUBLIC APIs
                         .requestMatchers("/api/auth/**").permitAll()
-                        .requestMatchers("/api/colleges/register").permitAll()
+                        .requestMatchers(
+                                org.springframework.http.HttpMethod.POST,
+                                "/api/colleges/register"
+                        ).permitAll()
+
                         .requestMatchers("/api/students/register").permitAll()
                         .requestMatchers("/api/student/**").permitAll()
 

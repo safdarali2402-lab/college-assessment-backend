@@ -23,7 +23,6 @@ public class StudentController {
         return ResponseEntity.ok(service.register(s));
     }
 
-    // ✅ NEW — All students of a college (used in Students.jsx & StudentList.jsx)
     @GetMapping("/college/{collegeId}")
     public List<Student> byCollege(@PathVariable String collegeId) {
         return service.getByCollege(collegeId);
@@ -53,5 +52,11 @@ public class StudentController {
     public ResponseEntity<?> delete(@PathVariable String id) {
         service.deleteStudent(id);
         return ResponseEntity.noContent().build();
+    }
+
+    // ✅ BRANCH WISE TEACHERS (IMPORTANT)
+    @GetMapping("/teachers-by-department/{email}")
+    public ResponseEntity<?> getTeachers(@PathVariable String email) {
+        return ResponseEntity.ok(service.getTeachersForStudent(email));
     }
 }

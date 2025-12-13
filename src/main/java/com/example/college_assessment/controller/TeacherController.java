@@ -58,16 +58,15 @@ public class TeacherController {
         return ResponseEntity.noContent().build();
     }
 
-    // ⭐ Dashboard
+    // ================= TEACHER DASHBOARD =================
     @GetMapping("/dashboard/{email}")
     public ResponseEntity<?> dashboard(@PathVariable String email) {
         Teacher t = teacherRepo.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("Teacher Not Found"));
-
         return ResponseEntity.ok(t);
     }
 
-    // ⭐ Filter students by teacher's DEPARTMENT + COLLEGE + APPROVED
+    // ================= TEACHER → MY STUDENTS =================
     @GetMapping("/students-by-department/{email}")
     public ResponseEntity<?> getStudents(@PathVariable String email) {
 
@@ -81,6 +80,22 @@ public class TeacherController {
                 );
 
         return ResponseEntity.ok(students);
+    }
+
+    // ================= ⭐ STUDENT → MY TEACHERS (FIX) ⭐ =================
+    @GetMapping("/by-student/{email}")
+    public ResponseEntity<?> getTeachersForStudent(@PathVariable String email) {
+
+        Student s = studentRepo.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Student Not Found"));
+
+        List<Teacher> teachers =
+                teacherRepo.findByDepartmentAndCollegeIdAndApprovedTrue(
+                        s.getDepartment(),
+                        s.getCollegeId()
+                );
+
+        return ResponseEntity.ok(teachers);
     }
 
     @PutMapping("/update-password/{email}")

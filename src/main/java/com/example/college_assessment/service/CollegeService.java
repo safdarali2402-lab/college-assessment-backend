@@ -13,42 +13,92 @@ public class CollegeService {
 
     private final CollegeRepository repo;
     private final UserRepository userRepo;
+    private final EmailService emailService;
 
-    public CollegeService(CollegeRepository repo, UserRepository userRepo) {
+    public CollegeService(CollegeRepository repo,
+                          UserRepository userRepo,
+                          EmailService emailService) {
         this.repo = repo;
         this.userRepo = userRepo;
+        this.emailService = emailService;
     }
 
+    // 🔹 REGISTER COLLEGE
     public College registerCollege(College college) {
+
         if (repo.existsByEmail(college.getEmail())) {
             throw new RuntimeException("College already registered using this email");
         }
+
         college.setApproved(false);
-        return repo.save(college);
+        college.setActive(false);
+        college.setStatus("PENDING");
+
+        College saved = repo.save(college);
+
+        // 📧 Registration email
+        emailService.sendCollegeRegistrationMail(
+                saved.getEmail(),
+                saved.getCollegeName()
+        );
+
+        return saved;
     }
 
     public List<College> getPendingColleges() {
         return repo.findByApprovedFalse();
     }
 
+    // ✅ APPROVE COLLEGE
     public College approveCollege(String id) {
+
         College college = repo.findById(id)
                 .orElseThrow(() -> new RuntimeException("College Not Found"));
 
         college.setApproved(true);
+        college.setActive(true);
+        college.setStatus("APPROVED");
+
         College saved = repo.save(college);
 
-        // Auto-create College Admin User (only if not already exists)
+        // 📧 Approved email
+        emailService.sendCollegeApprovedMail(
+                saved.getEmail(),
+                saved.getCollegeName()
+        );
+
+        // Auto-create College Admin User
         if (!userRepo.existsByUsername(college.getEmail())) {
             User admin = User.builder()
-                    .username(college.getEmail())   // login with college email
-                    .password("Temp@123")           // default password
+                    .username(college.getEmail())
+                    .password("Temp@123")
                     .role("COLLEGE_ADMIN")
                     .collegeId(saved.getId())
                     .build();
-
             userRepo.save(admin);
         }
+
+        return saved;
+    }
+
+    // ❌ REJECT COLLEGE
+    public College rejectCollege(String id, String reason) {
+
+        College college = repo.findById(id)
+                .orElseThrow(() -> new RuntimeException("College Not Found"));
+
+        college.setApproved(false);
+        college.setActive(false);
+        college.setStatus("REJECTED");
+
+        College saved = repo.save(college);
+
+        // 📧 Rejected email
+        emailService.sendCollegeRejectedMail(
+                saved.getEmail(),
+                saved.getCollegeName(),
+                reason
+        );
 
         return saved;
     }

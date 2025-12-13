@@ -24,4 +24,5 @@ public class College {
     private Boolean approved ;
     private boolean active;
     private String status = "PENDING";
+
 }

@@ -1,7 +1,9 @@
 package com.example.college_assessment.service;
 
 import com.example.college_assessment.model.Student;
+import com.example.college_assessment.model.Teacher;
 import com.example.college_assessment.repository.StudentRepository;
+import com.example.college_assessment.repository.TeacherRepository;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -10,9 +12,12 @@ import java.util.List;
 public class StudentService {
 
     private final StudentRepository repo;
+    private final TeacherRepository teacherRepo;
 
-    public StudentService(StudentRepository repo) {
+    public StudentService(StudentRepository repo,
+                          TeacherRepository teacherRepo) {
         this.repo = repo;
+        this.teacherRepo = teacherRepo;
     }
 
     // ✅ Student Register (Admin / Self both)
@@ -23,17 +28,16 @@ public class StudentService {
         }
 
         // Default ROLE for login system
-        s.setRole("ROLE_STUDENT");   // correct format for Spring Security
+        s.setRole("ROLE_STUDENT");
 
-
-        // Student must always have a password
+        // Default password if not provided
         if (s.getPassword() == null || s.getPassword().trim().isEmpty()) {
-            s.setPassword("Student@123");   // Default password first login
+            s.setPassword("Student@123");
         }
 
         s.setActive(true);
 
-        // If approved flag = true → directly approve
+        // Approval logic
         if (Boolean.TRUE.equals(s.getApproved())) {
             s.setApproved(true);
             s.setStatus("APPROVED");
@@ -45,41 +49,61 @@ public class StudentService {
         return repo.save(s);
     }
 
-    // Pending
+    // ✅ Pending students
     public List<Student> getPending(String collegeId) {
         return repo.findByCollegeIdAndApprovedFalse(collegeId);
     }
 
-    // Approved
+    // ✅ Approved students
     public List<Student> getApproved(String collegeId) {
         return repo.findByCollegeIdAndApprovedTrue(collegeId);
     }
 
-    // All (Approved + Pending)
+    // ✅ All students of college
     public List<Student> getByCollege(String collegeId) {
         return repo.findByCollegeId(collegeId);
     }
 
-    // Approve student
+    // ✅ Approve student
     public Student approve(String id) {
-        Student ss = repo.findById(id).orElseThrow();
+        Student ss = repo.findById(id)
+                .orElseThrow(() -> new RuntimeException("Student not found"));
+
         ss.setApproved(true);
         ss.setActive(true);
         ss.setStatus("APPROVED");
         return repo.save(ss);
     }
 
-    // Reject student
+    // ✅ Reject student
     public Student reject(String id) {
-        Student ss = repo.findById(id).orElseThrow();
+        Student ss = repo.findById(id)
+                .orElseThrow(() -> new RuntimeException("Student not found"));
+
         ss.setApproved(false);
         ss.setActive(false);
         ss.setStatus("REJECTED");
         return repo.save(ss);
     }
 
-    // Delete
+    // ✅ Delete student
     public void deleteStudent(String id) {
         repo.deleteById(id);
+    }
+
+    // =====================================================
+    // ⭐ IMPORTANT: STUDENT → BRANCH WISE TEACHERS
+    // =====================================================
+    public List<Teacher> getTeachersForStudent(String email) {
+
+        // 1️⃣ Get logged-in student
+        Student s = repo.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Student not found"));
+
+        // 2️⃣ Return teachers of SAME department + SAME college
+        return teacherRepo.findByDepartmentAndCollegeIdAndApprovedTrue(
+                s.getDepartment(),
+                s.getCollegeId()
+        );
     }
 }

@@ -19,38 +19,58 @@ public class CollegeController {
     private final TeacherRepository teacherRepo;
     private final StudentRepository studentRepo;
 
-    public CollegeController(CollegeService service,
-                             TeacherRepository teacherRepo,
-                             StudentRepository studentRepo) {
+    public CollegeController(
+            CollegeService service,
+            TeacherRepository teacherRepo,
+            StudentRepository studentRepo
+    ) {
         this.service = service;
         this.teacherRepo = teacherRepo;
         this.studentRepo = studentRepo;
     }
 
+    // ✅ REGISTER COLLEGE
     @PostMapping("/register")
     public College register(@RequestBody College college) {
         return service.registerCollege(college);
     }
 
+    // ⏳ GET PENDING COLLEGES
     @GetMapping("/pending")
     public List<College> getPendingColleges() {
         return service.getPendingColleges();
     }
 
+    // ✅ APPROVE COLLEGE
     @PutMapping("/approve/{id}")
     public College approveCollege(@PathVariable String id) {
         return service.approveCollege(id);
     }
 
-    // ⭐ DASHBOARD STATS API (FIXED & WORKING)
+    // ❌ REJECT COLLEGE
+    @PutMapping("/reject/{id}")
+    public College rejectCollege(
+            @PathVariable String id,
+            @RequestParam String reason
+    ) {
+        return service.rejectCollege(id, reason);
+    }
+
+    // ⭐ DASHBOARD STATS
     @GetMapping("/stats/{collegeId}")
     public ResponseEntity<?> getStats(@PathVariable String collegeId) {
 
-        int approvedTeachers = teacherRepo.findByCollegeIdAndApprovedTrue(collegeId).size();
-        int pendingTeachers = teacherRepo.findByCollegeIdAndApprovedFalse(collegeId).size();
+        int approvedTeachers =
+                teacherRepo.findByCollegeIdAndApprovedTrue(collegeId).size();
 
-        int approvedStudents = studentRepo.findByCollegeIdAndApprovedTrue(collegeId).size();
-        int pendingStudents = studentRepo.findByCollegeIdAndApprovedFalse(collegeId).size();
+        int pendingTeachers =
+                teacherRepo.findByCollegeIdAndApprovedFalse(collegeId).size();
+
+        int approvedStudents =
+                studentRepo.findByCollegeIdAndApprovedTrue(collegeId).size();
+
+        int pendingStudents =
+                studentRepo.findByCollegeIdAndApprovedFalse(collegeId).size();
 
         return ResponseEntity.ok(
                 Map.of(
