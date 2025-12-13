@@ -5,10 +5,11 @@ WORKDIR /app
 
 # Copy Maven wrapper & config
 COPY mvnw .
+RUN chmod +x mvnw
 COPY .mvn .mvn
 COPY pom.xml .
 
-# Download dependencies (cache layer)
+# Download dependencies
 RUN ./mvnw dependency:go-offline
 
 # Copy source code
@@ -17,7 +18,7 @@ COPY src src
 # Build jar
 RUN ./mvnw clean package -DskipTests
 
-# Expose port (Render provides PORT env)
+# Expose port
 EXPOSE 8080
 
 # Run application
