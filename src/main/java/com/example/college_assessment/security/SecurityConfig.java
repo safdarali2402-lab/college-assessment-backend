@@ -23,8 +23,10 @@ public class SecurityConfig {
     private final JwtAuthFilter jwtAuthFilter;
     private final CustomUserDetailsService userDetailsService;
 
-    public SecurityConfig(JwtAuthFilter jwtAuthFilter,
-                          CustomUserDetailsService userDetailsService) {
+    public SecurityConfig(
+            JwtAuthFilter jwtAuthFilter,
+            CustomUserDetailsService userDetailsService
+    ) {
         this.jwtAuthFilter = jwtAuthFilter;
         this.userDetailsService = userDetailsService;
     }
@@ -33,65 +35,78 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
 
         http
-                .csrf(csrf -> csrf.disable())
-                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-                .authorizeHttpRequests(auth -> auth
+            // ❌ CSRF not needed for JWT
+            .csrf(csrf -> csrf.disable())
 
-                        // ⭐⭐⭐ VERY IMPORTANT (FIX) ⭐⭐⭐
-                        .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
+            // ✅ ENABLE CORS (VERY IMPORTANT)
+            .cors(cors -> cors.configurationSource(corsConfigurationSource()))
 
-                        // PUBLIC APIs
-                        .requestMatchers("/api/auth/**").permitAll()
-                        .requestMatchers(
-                                org.springframework.http.HttpMethod.POST,
-                                "/api/colleges/register"
-                        ).permitAll()
+            // ❌ No session (JWT)
+            .sessionManagement(sm ->
+                    sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+            )
 
-                        .requestMatchers("/api/students/register").permitAll()
-                        .requestMatchers("/api/student/**").permitAll()
+            .authorizeHttpRequests(auth -> auth
 
-                        // SUPER ADMIN
-                        .requestMatchers(
-                                "/api/colleges/pending",
-                                "/api/colleges/approve/**"
-                        ).hasAnyAuthority("ROLE_SUPER_ADMIN", "SUPER_ADMIN")
+                // ⭐ ALLOW PREFLIGHT REQUESTS ⭐
+                .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
 
-                        // STATS
-                        .requestMatchers("/api/colleges/stats/**")
-                        .hasAnyAuthority(
-                                "ROLE_SUPER_ADMIN", "SUPER_ADMIN",
-                                "ROLE_COLLEGE_ADMIN", "COLLEGE_ADMIN"
-                        )
+                // ===== PUBLIC APIs =====
+                .requestMatchers("/api/auth/**").permitAll()
+                .requestMatchers("/api/colleges/register").permitAll()
+                .requestMatchers("/api/students/register").permitAll()
+                .requestMatchers("/api/student/**").permitAll()
 
-                        // COLLEGE ADMIN
-                        .requestMatchers(
-                                "/api/students/**",
-                                "/api/teachers/add",
-                                "/api/teachers/approve/**",
-                                "/api/teachers/reject/**",
-                                "/api/teachers/delete/**"
-                        ).hasAnyAuthority("ROLE_COLLEGE_ADMIN", "COLLEGE_ADMIN")
+                // ===== SUPER ADMIN =====
+                .requestMatchers(
+                        "/api/colleges/pending",
+                        "/api/colleges/approve/**"
+                ).hasAnyAuthority("ROLE_SUPER_ADMIN", "SUPER_ADMIN")
 
-                        // TEACHER
-                        .requestMatchers(
-                                "/api/teachers/dashboard/**",
-                                "/api/teachers/students-by-department/**"
-                        ).hasAnyAuthority("ROLE_TEACHER", "TEACHER")
-
-                        // MARKS
-                        .requestMatchers("/api/marks/add").hasAnyAuthority("ROLE_TEACHER", "TEACHER")
-                        .requestMatchers("/api/marks/student/**").hasAnyAuthority("ROLE_STUDENT", "STUDENT")
-                        .requestMatchers("/api/marks/teacher/**").hasAnyAuthority("ROLE_TEACHER", "TEACHER")
-
-                        .anyRequest().authenticated()
+                // ===== STATS =====
+                .requestMatchers("/api/colleges/stats/**")
+                .hasAnyAuthority(
+                        "ROLE_SUPER_ADMIN", "SUPER_ADMIN",
+                        "ROLE_COLLEGE_ADMIN", "COLLEGE_ADMIN"
                 )
-                .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .authenticationProvider(authProvider())
-                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+
+                // ===== COLLEGE ADMIN =====
+                .requestMatchers(
+                        "/api/students/**",
+                        "/api/teachers/add",
+                        "/api/teachers/approve/**",
+                        "/api/teachers/reject/**",
+                        "/api/teachers/delete/**"
+                ).hasAnyAuthority("ROLE_COLLEGE_ADMIN", "COLLEGE_ADMIN")
+
+                // ===== TEACHER =====
+                .requestMatchers(
+                        "/api/teachers/dashboard/**",
+                        "/api/teachers/students-by-department/**"
+                ).hasAnyAuthority("ROLE_TEACHER", "TEACHER")
+
+                // ===== MARKS =====
+                .requestMatchers("/api/marks/add")
+                .hasAnyAuthority("ROLE_TEACHER", "TEACHER")
+
+                .requestMatchers("/api/marks/student/**")
+                .hasAnyAuthority("ROLE_STUDENT", "STUDENT")
+
+                .requestMatchers("/api/marks/teacher/**")
+                .hasAnyAuthority("ROLE_TEACHER", "TEACHER")
+
+                // ===== EVERYTHING ELSE =====
+                .anyRequest().authenticated()
+            )
+
+            // ===== AUTH =====
+            .authenticationProvider(authProvider())
+            .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
 
+    // ================= AUTH PROVIDER =================
     @Bean
     public DaoAuthenticationProvider authProvider() {
         DaoAuthenticationProvider provider = new DaoAuthenticationProvider();
@@ -101,26 +116,42 @@ public class SecurityConfig {
     }
 
     @Bean
-    public AuthenticationManager authenticationManager(AuthenticationConfiguration config)
-            throws Exception {
+    public AuthenticationManager authenticationManager(
+            AuthenticationConfiguration config
+    ) throws Exception {
         return config.getAuthenticationManager();
     }
 
     @Bean
     public PasswordEncoder passwordEncoder() {
+        // ⚠️ DEV only (prod me BCrypt use karna)
         return NoOpPasswordEncoder.getInstance();
     }
 
+    // ================= CORS (FINAL FIX) =================
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
+
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(List.of("http://localhost:5173"));
-        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+
+        // ✅ ALLOWED FRONTENDS
+        config.setAllowedOrigins(List.of(
+                "http://localhost:5173",
+                "http://localhost:3000",
+                "https://studenttracker.2smtech.in"
+        ));
+
+        config.setAllowedMethods(List.of(
+                "GET", "POST", "PUT", "DELETE", "OPTIONS"
+        ));
+
         config.setAllowedHeaders(List.of("*"));
         config.setAllowCredentials(true);
 
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        UrlBasedCorsConfigurationSource source =
+                new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);
+
         return source;
     }
 }
